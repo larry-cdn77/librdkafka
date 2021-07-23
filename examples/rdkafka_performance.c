@@ -1438,6 +1438,7 @@ int main (int argc, char **argv) {
                                 fread(&size, 1, sizeof(size_t), dump_file);
                                 pbuf = malloc(size);
                                 fread(pbuf, size, 1, dump_file);
+                                msgsize = (int)size;
                         }
                         else {
                                 if (latency_mode) {
