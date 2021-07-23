@@ -75,6 +75,8 @@ static int partition_cnt = 0;
 static int eof_cnt = 0;
 static int with_dr = 1;
 static int read_hdrs = 0;
+static int dump_file_on = 0;
+static FILE *dump_file = NULL;
 
 
 static void stop (int sig) {
@@ -296,6 +298,11 @@ static void msg_consume (rd_kafka_message_t *rkmessage, void *opaque) {
         cnt.offset = rkmessage->offset;
 	cnt.msgs++;
 	cnt.bytes += rkmessage->len;
+
+        if (dump_file != NULL) {
+                fwrite(&rkmessage->len, 1, sizeof(size_t), dump_file);
+                fwrite(rkmessage->payload, rkmessage->len, 1, dump_file);
+        }
 
 	if (verbosity >= 3 ||
             (verbosity >= 2 && !(cnt.msgs % 1000000)))
@@ -881,9 +888,11 @@ int main (int argc, char **argv) {
 
 	while ((opt =
 		getopt(argc, argv,
-		       "PCG:t:p:b:s:k:c:fi:MDd:m:S:x:"
+		       "fPCG:t:p:b:s:k:c:fi:MDd:m:S:x:"
                        "R:a:z:o:X:B:eT:Y:qvIur:lA:OwNH:")) != -1) {
 		switch (opt) {
+                case 'f':
+                        dump_file_on = 1;
 		case 'G':
 			if (rd_kafka_conf_set(conf, "group.id", optarg,
 					      errstr, sizeof(errstr)) !=
@@ -1173,6 +1182,8 @@ int main (int argc, char **argv) {
 			"<file>. Requires -l\n"
                         "  -O           Report produced offset (producer)\n"
 			"  -N           No delivery reports (producer)\n"
+                        "  -f           Dump messages to a binary file named \"dump.bin\" (consumer)\n"
+                        "               Read messages from \"dump.bin\" instead of generating(producer)\n"
 			"\n"
 			" In Consumer mode:\n"
 			"  consumes messages and prints thruput\n"
@@ -1322,6 +1333,23 @@ int main (int argc, char **argv) {
                 exit(1);
         }
 
+        if (dump_file_on) {
+                if (mode == 'C') {
+                        dump_file = fopen("dump.bin", "wb");
+                        if (dump_file == NULL) {
+                                fprintf(stderr, "%% failed to open dump file\n");
+                                exit(1);
+                        }
+                }
+                else if (mode == 'P') {
+                        dump_file = fopen("dump.bin", "rb");
+                        if (dump_file == NULL) {
+                                fprintf(stderr, "%% failed to open dump file\n");
+                                exit(1);
+                        }
+                }
+        }
+
 	if (mode == 'P') {
 		/*
 		 * Producer
@@ -1396,7 +1424,8 @@ int main (int argc, char **argv) {
 
 		msgs_wait_produce_cnt = msgcnt;
 
-		while (run && (msgcnt == -1 || (int)cnt.msgs < msgcnt)) {
+		while (run && (msgcnt == -1 || (int)cnt.msgs < msgcnt) &&
+                       (dump_file == NULL || feof(dump_file) == 0)) {
 			/* Send/Produce message. */
 
 			if (idle) {
@@ -1404,24 +1433,32 @@ int main (int argc, char **argv) {
 				continue;
 			}
 
-                        if (latency_mode) {
-                                rd_snprintf(sbuf, msgsize-1,
-                                         "LATENCY:%"PRIu64,  wall_clock());
-                        } else if (do_seq) {
-                                rd_snprintf(sbuf,
-                                         msgsize-1, "%"PRIu64": ", seq);
-                                seq++;
-			}
+                        if (dump_file != NULL) {
+                                size_t size = 0;
+                                fread(&size, 1, sizeof(size_t), dump_file);
+                                pbuf = malloc(size);
+                                fread(pbuf, size, 1, dump_file);
+                        }
+                        else {
+                                if (latency_mode) {
+                                        rd_snprintf(sbuf, msgsize-1,
+                                                 "LATENCY:%"PRIu64,  wall_clock());
+                                } else if (do_seq) {
+                                        rd_snprintf(sbuf,
+                                                 msgsize-1, "%"PRIu64": ", seq);
+                                        seq++;
+                                }
 
-			if (sendflags & RD_KAFKA_MSG_F_FREE) {
-				/* Duplicate memory */
-				pbuf = malloc(msgsize);
-				memcpy(pbuf, sbuf, msgsize);
-			} else
-				pbuf = sbuf;
+                                if (sendflags & RD_KAFKA_MSG_F_FREE) {
+                                        /* Duplicate memory */
+                                        pbuf = malloc(msgsize);
+                                        memcpy(pbuf, sbuf, msgsize);
+                                } else
+                                        pbuf = sbuf;
 
-                        if (msgsize == 0)
-                                pbuf = NULL;
+                                if (msgsize == 0)
+                                        pbuf = NULL;
+                        }
 
 			cnt.tx++;
 			while (run &&
@@ -1459,6 +1496,10 @@ int main (int argc, char **argv) {
 
                                 print_stats(rk, mode, otype, compression);
 			}
+
+                        if (dump_file != NULL && !(sendflags & RD_KAFKA_MSG_F_FREE) && pbuf != NULL) {
+                                free(pbuf);
+                        }
 
 			msgs_wait_cnt++;
 			if (msgs_wait_produce_cnt != -1)
@@ -1691,6 +1732,9 @@ int main (int argc, char **argv) {
 
 		rd_kafka_destroy(rk);
 	}
+
+        if (dump_file != NULL)
+                fclose(dump_file);
 
         if (hdrs)
                 rd_kafka_headers_destroy(hdrs);
