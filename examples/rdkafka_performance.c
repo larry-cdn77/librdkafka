@@ -893,6 +893,7 @@ int main (int argc, char **argv) {
 		switch (opt) {
                 case 'f':
                         dump_file_on = 1;
+                        break;
 		case 'G':
 			if (rd_kafka_conf_set(conf, "group.id", optarg,
 					      errstr, sizeof(errstr)) !=
