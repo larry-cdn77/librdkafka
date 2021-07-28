@@ -1364,7 +1364,10 @@ int main (int argc, char **argv) {
 		int partition = partitions ? partitions[0] :
 			RD_KAFKA_PARTITION_UA;
 
-                if (latency_mode) {
+                if (dump_file != NULL) {
+#define DUMP_FILE_MAX 4096
+                        msgsize = DUMP_FILE_MAX;
+                } else if (latency_mode) {
                         int minlen = (int)(strlen("LATENCY:") +
                                            strlen("18446744073709551615 ")+1);
                         msgsize = RD_MAX(minlen, msgsize);
@@ -1437,30 +1440,29 @@ int main (int argc, char **argv) {
                         if (dump_file != NULL) {
                                 size_t size = 0;
                                 fread(&size, 1, sizeof(size_t), dump_file);
-                                pbuf = malloc(size);
-                                fread(pbuf, size, 1, dump_file);
+                                assert(size <= DUMP_FILE_MAX);
+                                fread(sbuf, size, 1, dump_file);
                                 msgsize = (int)size;
                         }
-                        else {
-                                if (latency_mode) {
-                                        rd_snprintf(sbuf, msgsize-1,
-                                                 "LATENCY:%"PRIu64,  wall_clock());
-                                } else if (do_seq) {
-                                        rd_snprintf(sbuf,
-                                                 msgsize-1, "%"PRIu64": ", seq);
-                                        seq++;
-                                }
 
-                                if (sendflags & RD_KAFKA_MSG_F_FREE) {
-                                        /* Duplicate memory */
-                                        pbuf = malloc(msgsize);
-                                        memcpy(pbuf, sbuf, msgsize);
-                                } else
-                                        pbuf = sbuf;
-
-                                if (msgsize == 0)
-                                        pbuf = NULL;
+                        if (latency_mode) {
+                                rd_snprintf(sbuf, msgsize-1,
+                                         "LATENCY:%"PRIu64,  wall_clock());
+                        } else if (do_seq) {
+                                rd_snprintf(sbuf,
+                                         msgsize-1, "%"PRIu64": ", seq);
+                                seq++;
                         }
+
+                        if (sendflags & RD_KAFKA_MSG_F_FREE) {
+                                /* Duplicate memory */
+                                pbuf = malloc(msgsize);
+                                memcpy(pbuf, sbuf, msgsize);
+                        } else
+                                pbuf = sbuf;
+
+                        if (msgsize == 0)
+                                pbuf = NULL;
 
 			cnt.tx++;
 			while (run &&
@@ -1498,10 +1500,6 @@ int main (int argc, char **argv) {
 
                                 print_stats(rk, mode, otype, compression);
 			}
-
-                        if (dump_file != NULL && !(sendflags & RD_KAFKA_MSG_F_FREE) && pbuf != NULL) {
-                                free(pbuf);
-                        }
 
 			msgs_wait_cnt++;
 			if (msgs_wait_produce_cnt != -1)
