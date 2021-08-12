@@ -1348,6 +1348,10 @@ int main (int argc, char **argv) {
                                 fprintf(stderr, "%% failed to open dump file\n");
                                 exit(1);
                         }
+                        if ((sendflags & RD_KAFKA_MSG_F_FREE) == 0) {
+                                fprintf(stderr, "%% Dump file reading needs -D\n");
+                                exit(1);
+                        }
                 }
         }
 
@@ -1441,6 +1445,10 @@ int main (int argc, char **argv) {
                                 size_t size = 0;
                                 fread(&size, sizeof(size_t), 1, dump_file);
                                 assert(size <= DUMP_FILE_MAX);
+
+                                /* Payload must persist after call to produce */
+                                assert(sendflags & RD_KAFKA_MSG_F_FREE);
+
                                 fread(sbuf, 1, size, dump_file);
                                 msgsize = (int)size;
                         }
