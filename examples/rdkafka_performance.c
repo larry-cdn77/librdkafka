@@ -300,8 +300,8 @@ static void msg_consume (rd_kafka_message_t *rkmessage, void *opaque) {
 	cnt.bytes += rkmessage->len;
 
         if (dump_file != NULL) {
-                fwrite(&rkmessage->len, 1, sizeof(size_t), dump_file);
-                fwrite(rkmessage->payload, rkmessage->len, 1, dump_file);
+                fwrite(&rkmessage->len, sizeof(size_t), 1, dump_file);
+                fwrite(rkmessage->payload, 1, rkmessage->len, dump_file);
         }
 
 	if (verbosity >= 3 ||
@@ -1439,9 +1439,9 @@ int main (int argc, char **argv) {
 
                         if (dump_file != NULL) {
                                 size_t size = 0;
-                                fread(&size, 1, sizeof(size_t), dump_file);
+                                fread(&size, sizeof(size_t), 1, dump_file);
                                 assert(size <= DUMP_FILE_MAX);
-                                fread(sbuf, size, 1, dump_file);
+                                fread(sbuf, 1, size, dump_file);
                                 msgsize = (int)size;
                         }
 
