@@ -1184,7 +1184,7 @@ int main (int argc, char **argv) {
                         "  -O           Report produced offset (producer)\n"
 			"  -N           No delivery reports (producer)\n"
                         "  -f           Dump messages to a binary file named \"dump.bin\" (consumer)\n"
-                        "               Read messages from \"dump.bin\" instead of generating(producer)\n"
+                        "               Read messages from \"dump.bin\" instead of generating (producer)\n"
 			"\n"
 			" In Consumer mode:\n"
 			"  consumes messages and prints thruput\n"
