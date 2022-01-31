@@ -6230,8 +6230,7 @@ const char *rd_kafka_broker_name (rd_kafka_broker_t *rkb) {
  */
 void rd_kafka_broker_wakeup (rd_kafka_broker_t *rkb) {
         rd_kafka_op_t *rko = rd_kafka_op_new(RD_KAFKA_OP_WAKEUP);
-        rd_kafka_op_set_prio(rko, RD_KAFKA_PRIO_FLASH);
-        rd_kafka_q_enq(rkb->rkb_ops, rko);
+        rd_kafka_q_enq1(rkb->rkb_ops, rko, rkb->rkb_ops, 1, 1);
         rd_rkb_dbg(rkb, QUEUE, "WAKEUP", "Wake-up");
 }
 
