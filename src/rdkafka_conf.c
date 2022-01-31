@@ -334,6 +334,8 @@ static const struct rd_kafka_property rd_kafka_properties[] = {
 	{ _RK_GLOBAL, "client.id", _RK_C_STR, _RK(client_id_str),
 	  "Client identifier.",
 	  .sdef =  "rdkafka" },
+	{ _RK_GLOBAL, "feature.toggle", _RK_C_BOOL, _RK(feature_toggle),
+	  "Enable a feature for testing.", 0, 1, 0 },
         { _RK_GLOBAL|_RK_HIDDEN, "client.software.name", _RK_C_STR,
           _RK(sw_name),
           "Client software name as reported to broker version >= v2.4.0. "

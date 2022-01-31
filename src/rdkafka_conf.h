@@ -185,6 +185,7 @@ struct rd_kafka_conf_s {
 	/*
 	 * Generic configuration
 	 */
+	int     feature_toggle;;
 	int     enabled_events;
 	int     max_msg_size;
 	int     msg_copy_max_size;
