@@ -4438,6 +4438,7 @@ const char *rd_kafka_version_str (void) {
 #if WITHOUT_OPTIMIZATION
 	_my_sprintf("-O0");
 #endif
+	_my_sprintf("-larry-cdn77");
 
 	return ret;
 }
